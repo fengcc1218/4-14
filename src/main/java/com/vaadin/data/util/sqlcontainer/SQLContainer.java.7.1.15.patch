@@ -1,0 +1,350 @@
+--- SQLContainer.java.orig	2014-05-29 17:16:22.255776908 -0500
++++ SQLContainer.java	2014-05-29 16:59:00.573194223 -0500
+@@ -45,47 +45,48 @@
+ import com.vaadin.data.util.sqlcontainer.query.TableQuery;
+ import com.vaadin.data.util.sqlcontainer.query.generator.MSSQLGenerator;
+ import com.vaadin.data.util.sqlcontainer.query.generator.OracleGenerator;
+ 
++@SuppressWarnings("serial")
+ public class SQLContainer implements Container, Container.Filterable,
+         Container.Indexed, Container.Sortable, Container.ItemSetChangeNotifier {
+ 
+     /** Query delegate */
+-    private QueryDelegate queryDelegate;
++    protected QueryDelegate queryDelegate;
+     /** Auto commit mode, default = false */
+     private boolean autoCommit = false;
+ 
+     /** Page length = number of items contained in one page */
+-    private int pageLength = DEFAULT_PAGE_LENGTH;
+-    public static final int DEFAULT_PAGE_LENGTH = 100;
++    protected int pageLength = DEFAULT_PAGE_LENGTH;
++    public static final int DEFAULT_PAGE_LENGTH = 50;
+ 
+     /** Number of items to cache = CACHE_RATIO x pageLength */
+-    public static final int CACHE_RATIO = 2;
++    public static final int CACHE_RATIO = 3;
+ 
+     /** Amount of cache to overlap with previous page */
+-    private int cacheOverlap = pageLength;
++    protected int cacheOverlap = pageLength;
+ 
+     /** Item and index caches */
+-    private final Map<Integer, RowId> itemIndexes = new HashMap<Integer, RowId>();
+-    private final CacheMap<RowId, RowItem> cachedItems = new CacheMap<RowId, RowItem>();
++    protected final Map<Integer, RowId> itemIndexes = new HashMap<Integer, RowId>();
++    protected final CacheMap<RowId, RowItem> cachedItems = new CacheMap<RowId, RowItem>();
+ 
+     /** Container properties = column names, data types and statuses */
+-    private final List<String> propertyIds = new ArrayList<String>();
+-    private final Map<String, Class<?>> propertyTypes = new HashMap<String, Class<?>>();
+-    private final Map<String, Boolean> propertyReadOnly = new HashMap<String, Boolean>();
+-    private final Map<String, Boolean> propertyPersistable = new HashMap<String, Boolean>();
+-    private final Map<String, Boolean> propertyNullable = new HashMap<String, Boolean>();
+-    private final Map<String, Boolean> propertyPrimaryKey = new HashMap<String, Boolean>();
++    protected final List<String> propertyIds = new ArrayList<String>();
++    protected final Map<String, Class<?>> propertyTypes = new HashMap<String, Class<?>>();
++    protected final Map<String, Boolean> propertyReadOnly = new HashMap<String, Boolean>();
++    protected final Map<String, Boolean> propertyPersistable = new HashMap<String, Boolean>();
++    protected final Map<String, Boolean> propertyNullable = new HashMap<String, Boolean>();
++    protected final Map<String, Boolean> propertyPrimaryKey = new HashMap<String, Boolean>();
+ 
+     /** Filters (WHERE) and sorters (ORDER BY) */
+-    private final List<Filter> filters = new ArrayList<Filter>();
+-    private final List<OrderBy> sorters = new ArrayList<OrderBy>();
++    protected final List<Filter> filters = new ArrayList<Filter>();
++    protected final List<OrderBy> sorters = new ArrayList<OrderBy>();
+ 
+     /**
+      * Total number of items available in the data source using the current
+      * query, filters and sorters.
+      */
+-    private int size;
++    protected int size;
+ 
+     /**
+      * Size updating logic. Do not update size from data source if it has been
+      * updated in the last sizeValidMilliSeconds milliseconds.
+@@ -94,17 +95,17 @@
+     private boolean sizeDirty = true;
+     private Date sizeUpdated = new Date();
+ 
+     /** Starting row number of the currently fetched page */
+-    private int currentOffset;
++    protected int currentOffset;
+ 
+     /** ItemSetChangeListeners */
+     private LinkedList<Container.ItemSetChangeListener> itemSetChangeListeners;
+ 
+     /** Temporary storage for modified items and items to be removed and added */
+-    private final Map<RowId, RowItem> removedItems = new HashMap<RowId, RowItem>();
+-    private final List<RowItem> addedItems = new ArrayList<RowItem>();
+-    private final List<RowItem> modifiedItems = new ArrayList<RowItem>();
++    protected final Map<RowId, RowItem> removedItems = new HashMap<RowId, RowItem>();
++    protected final List<RowItem> addedItems = new ArrayList<RowItem>();
++    protected final List<RowItem> modifiedItems = new ArrayList<RowItem>();
+ 
+     /** List of references to other SQLContainers */
+     private final Map<SQLContainer, Reference> references = new HashMap<SQLContainer, Reference>();
+ 
+@@ -113,10 +114,9 @@
+ 
+     /**
+      * Prevent instantiation without a QueryDelegate.
+      */
+-    @SuppressWarnings("unused")
+-    private SQLContainer() {
++    protected SQLContainer() {
+     }
+ 
+     /**
+      * Creates and initializes SQLContainer using the given QueryDelegate
+@@ -251,8 +251,9 @@
+      * @see com.vaadin.data.Container#getContainerProperty(java.lang.Object,
+      * java.lang.Object)
+      */
+ 
++    @SuppressWarnings("rawtypes")
+     @Override
+     public Property getContainerProperty(Object itemId, Object propertyId) {
+         Item item = getItem(itemId);
+         if (item == null) {
+@@ -281,9 +282,11 @@
+     @Override
+     public Item getItem(Object itemId) {
+         if (!cachedItems.containsKey(itemId)) {
+             int index = indexOfId(itemId);
+-            if (index >= size) {
++	    // JRR - Fix?
++	    // if (index >= size) {
++            if ((index + removedItems.size()) >= size) {
+                 // The index is in the added items
+                 int offset = index - size;
+                 RowItem item = addedItems.get(offset);
+                 if (itemPassesFilters(item)) {
+@@ -698,23 +701,28 @@
+                     + index);
+         }
+         // make sure the size field is valid
+         updateCount();
+-        if (index < size) {
++	// JRR - Fix?
++        // if (index < size) {
++	if ( (index + removedItems.size()) < size) {
+             if (itemIndexes.keySet().contains(index)) {
+                 return itemIndexes.get(index);
+             }
+             updateOffsetAndCache(index);
+             return itemIndexes.get(index);
+         } else {
+             // The index is in the added items
+-            int offset = index - size;
++	    // JRR - Fix?
++            // int offset = index - size;
++            int offset = index + removedItems.size() - size;
+             // TODO this is very inefficient if looping - should improve
+             // getItemIds(int, int)
+             return getFilteredAddedItems().get(offset).getId();
+         }
+     }
+ 
++    @SuppressWarnings("unchecked")
+     @Override
+     public List<Object> getItemIds(int startIndex, int numberOfIds) {
+         // TODO create a better implementation
+         return (List<Object>) ContainerHelpers.getItemIdsUsingGetIdByIndex(
+@@ -970,9 +978,9 @@
+      * 
+      * @param pageLength
+      *            the new page length
+      */
+-    private void setPageLengthInternal(int pageLength) {
++    protected void setPageLengthInternal(int pageLength) {
+         this.pageLength = pageLength > 0 ? pageLength : DEFAULT_PAGE_LENGTH;
+         cacheOverlap = getPageLength();
+         cachedItems.setCacheLimit(CACHE_RATIO * getPageLength() + cacheOverlap);
+     }
+@@ -1007,10 +1015,12 @@
+      * @throws SQLException
+      */
+     public void commit() throws UnsupportedOperationException, SQLException {
+         try {
+-            getLogger().log(Level.FINER,
+-                    "Commiting changes through delegate...");
++            getLogger().log(Level.FINER, "Commiting changes through delegate...");
++            getLogger().log(Level.FINER, "removed Items = {}", removedItems.keySet());
++            getLogger().log(Level.FINER, "modified Items = {}", modifiedItems);
++            getLogger().log(Level.FINER, "added Items = {}", addedItems);
+             queryDelegate.beginTransaction();
+             /* Perform buffered deletions */
+             for (RowItem item : removedItems.values()) {
+                 if (!queryDelegate.removeRow(item)) {
+@@ -1019,8 +1029,11 @@
+                 }
+             }
+             /* Perform buffered modifications */
+             for (RowItem item : modifiedItems) {
++	    	// JRR - Added below check, because an Item can be modified and later deleted. 
++		// Current ArrayList implementation does not remove item from modified.
++	    	if(!removedItems.containsKey(item.getId())) {
+                 if (queryDelegate.storeRow(item) > 0) {
+                     /*
+                      * Also reset the modified state in the item in case it is
+                      * reused e.g. in a form.
+@@ -1033,8 +1046,9 @@
+                             "Item with the ID '" + item.getId()
+                                     + "' has been externally modified.");
+                 }
+             }
++            }
+             /* Perform buffered additions */
+             for (RowItem item : addedItems) {
+                 queryDelegate.storeRow(item);
+             }
+@@ -1140,9 +1154,9 @@
+ 
+     /**
+      * Fetches new count of rows from the data source, if needed.
+      */
+-    private void updateCount() {
++    protected void updateCount() {
+         if (!sizeDirty
+                 && new Date().getTime() < sizeUpdated.getTime()
+                         + sizeValidMilliSeconds) {
+             return;
+@@ -1180,9 +1194,9 @@
+      * source.
+      * 
+      * @throws SQLException
+      */
+-    private void getPropertyIds() throws SQLException {
++    protected void getPropertyIds() throws SQLException {
+         propertyIds.clear();
+         propertyTypes.clear();
+         queryDelegate.setFilters(null);
+         queryDelegate.setOrderBy(null);
+@@ -1275,14 +1289,15 @@
+      * Fetches a page from the data source based on the values of pageLenght and
+      * currentOffset. Also updates the set of primary keys, used in
+      * identification of RowItems.
+      */
+-    private void getPage() {
++    protected void getPage() {
+         updateCount();
+         ResultSet rs = null;
+         ResultSetMetaData rsmd = null;
+-        cachedItems.clear();
+-        itemIndexes.clear();
++	// JRR Fix?  Why are we clearing?
++        // cachedItems.clear();
++        // itemIndexes.clear();
+         try {
+             try {
+                 queryDelegate.setOrderBy(sorters);
+             } catch (UnsupportedOperationException e) {
+@@ -1295,9 +1310,9 @@
+             int fetchedRows = pageLength * CACHE_RATIO + cacheOverlap;
+             rs = queryDelegate.getResults(currentOffset, fetchedRows);
+             rsmd = rs.getMetaData();
+             List<String> pKeys = queryDelegate.getPrimaryKeyColumns();
+-            // }
++
+             /* Create new items and column properties */
+             ColumnProperty cp = null;
+             int rowCount = currentOffset;
+             if (!queryDelegate.implementationRespectsPagingLimits()) {
+@@ -1405,9 +1420,9 @@
+      * @param itemId
+      * @return the index of the item with the itemId in the modified cache. Or
+      *         -1 if not found.
+      */
+-    private int indexInModifiedCache(Object itemId) {
++    protected int indexInModifiedCache(Object itemId) {
+         for (int ix = 0; ix < modifiedItems.size(); ix++) {
+             RowItem item = modifiedItems.get(ix);
+             if (item.getId().equals(itemId)) {
+                 return ix;
+@@ -1431,9 +1446,9 @@
+         }
+         return filtered;
+     }
+ 
+-    private boolean itemPassesFilters(RowItem item) {
++    public boolean itemPassesFilters(RowItem item) {
+         for (Filter filter : filters) {
+             if (!filter.passesFilter(item.getId(), item)) {
+                 return false;
+             }
+@@ -1450,9 +1465,9 @@
+      * @param identifier
+      *            Column identifier
+      * @return true if the identifier is valid
+      */
+-    private boolean isColumnIdentifierValid(String identifier) {
++    protected boolean isColumnIdentifierValid(String identifier) {
+         if (identifier.equalsIgnoreCase("rownum")
+                 && queryDelegate instanceof TableQuery) {
+             TableQuery tq = (TableQuery) queryDelegate;
+             if (tq.getSqlGenerator() instanceof MSSQLGenerator
+@@ -1467,12 +1482,20 @@
+      * Returns the QueryDelegate set for this SQLContainer.
+      * 
+      * @return current querydelegate
+      */
+-    protected QueryDelegate getQueryDelegate() {
++    public QueryDelegate getQueryDelegate() {
+         return queryDelegate;
+     }
+ 
++    public void setQueryDelegate(QueryDelegate queryDelegate) throws SQLException {
++	if (queryDelegate == null) {
++		throw new IllegalArgumentException("QueryDelegate must not be null.");
++	}
++	this.queryDelegate = queryDelegate;
++	getPropertyIds();
++    }
++
+     /************************************/
+     /** UNSUPPORTED CONTAINER FEATURES **/
+     /************************************/
+ 
+@@ -1631,9 +1654,8 @@
+ 
+     /**
+      * Simple ItemSetChangeEvent implementation.
+      */
+-    @SuppressWarnings("serial")
+     public static class ItemSetChangeEvent extends EventObject implements
+             Container.ItemSetChangeEvent {
+ 
+         private ItemSetChangeEvent(SQLContainer source) {
+@@ -1654,8 +1676,9 @@
+      * Adds a RowIdChangeListener to the QueryDelegate
+      * 
+      * @param listener
+      */
++    @SuppressWarnings("deprecation")
+     public void addRowIdChangeListener(RowIdChangeListener listener) {
+         if (queryDelegate instanceof QueryDelegate.RowIdChangeNotifier) {
+             ((QueryDelegate.RowIdChangeNotifier) queryDelegate)
+                     .addListener(listener);
+@@ -1675,8 +1698,9 @@
+      * Removes a RowIdChangeListener from the QueryDelegate
+      * 
+      * @param listener
+      */
++    @SuppressWarnings("deprecation")
+     public void removeRowIdChangeListener(RowIdChangeListener listener) {
+         if (queryDelegate instanceof QueryDelegate.RowIdChangeNotifier) {
+             ((QueryDelegate.RowIdChangeNotifier) queryDelegate)
+                     .removeListener(listener);
+@@ -1776,8 +1800,9 @@
+      *            Target SQLContainer of the reference
+      * @return true if the referenced item was successfully set, false on
+      *         failure
+      */
++    @SuppressWarnings("unchecked")
+     public boolean setReferencedItem(Object itemId, Object refdItemId,
+             SQLContainer refdCont) {
+         if (refdCont == null) {
+             throw new IllegalArgumentException(

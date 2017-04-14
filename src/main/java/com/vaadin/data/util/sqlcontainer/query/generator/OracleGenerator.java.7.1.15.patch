@@ -1,0 +1,102 @@
+--- OracleGenerator.java.orig	2014-05-28 16:44:13.511260030 -0500
++++ OracleGenerator.java	2014-05-29 13:38:27.548346396 -0500
+@@ -17,8 +17,10 @@
+ 
+ import java.util.List;
+ 
+ import com.vaadin.data.Container.Filter;
++import com.vaadin.data.util.sqlcontainer.query.CastedOrderBy;
++import com.vaadin.data.util.sqlcontainer.query.NLSSortedOrderBy;
+ import com.vaadin.data.util.sqlcontainer.query.OrderBy;
+ import com.vaadin.data.util.sqlcontainer.query.generator.filter.QueryBuilder;
+ 
+ @SuppressWarnings("serial")
+@@ -79,8 +81,9 @@
+             query.append(String.format(
+                     "SELECT COUNT(*) AS %s FROM (SELECT * FROM %s",
+                     QueryBuilder.quote("rowcount"), tableName));
+             if (filters != null && !filters.isEmpty()) {
++        	    //FIXME This doesn't handle queries which already have wheres in the statement.
+                 query.append(QueryBuilder.getWhereStringForFilters(filters, sh));
+             }
+             query.append(")");
+             sh.setQueryString(query.toString());
+@@ -107,8 +110,9 @@
+         query.append(String
+                 .format("SELECT * FROM (SELECT x.*, ROWNUM AS %s FROM (SELECT %s FROM %s",
+                         QueryBuilder.quote("rownum"), toSelect, tableName));
+         if (filters != null) {
++        	//FIXME This doesn't handle queries which already have wheres in the statement.
+             query.append(QueryBuilder.getWhereStringForFilters(filters, sh));
+         }
+         if (orderBys != null) {
+             for (OrderBy o : orderBys) {
+@@ -119,6 +123,68 @@
+                 QueryBuilder.quote("rownum"), offset, offset + pagelength));
+         sh.setQueryString(query.toString());
+         return sh;
+     }
++    
++    /**
++     * Generates sorting rules as an ORDER BY -clause
++     * 
++     * @param sb
++     *            StringBuffer to which the clause is appended.
++     * @param o
++     *            OrderBy object to be added into the sb.
++     * @param firstOrderBy
++     *            If true, this is the first OrderBy.
++     * @return
++     */
++    @Override
++    protected StringBuffer generateOrderBy(StringBuffer sb, OrderBy o,
++            boolean firstOrderBy) {
++    	
++    	if(o instanceof NLSSortedOrderBy) {
++    		
++	        if (firstOrderBy) {
++	            sb.append(" ORDER BY ");
++	        } else {
++	            sb.append(", ");
++	        }
++	        
++	        sb.append("NLSSORT(");
++	        sb.append(QueryBuilder.quote(o.getColumn()));
++	        sb.append(",'NLS_SORT=");
++	        sb.append(((NLSSortedOrderBy)o).getNLSSetting());
++	        sb.append("')");
++	        
++	        if (o.isAscending()) {
++	            sb.append(" ASC");
++	        } else {
++	            sb.append(" DESC");
++	        }
++	        return sb;
++	        
++		} else if (o instanceof CastedOrderBy) {
++			
++	        if (firstOrderBy) {
++	            sb.append(" ORDER BY ");
++	        } else {
++	            sb.append(", ");
++	        }
++			
++			sb.append("CAST(");
++			sb.append(QueryBuilder.quote(o.getColumn()));
++			sb.append(" AS ");
++			sb.append(((CastedOrderBy) o).getCastType());
++			sb.append(")");
++	        if (o.isAscending()) {
++	            sb.append(" ASC");
++	        } else {
++	            sb.append(" DESC");
++	        }
++	        return sb;
++				
++    	} else {
++    		return super.generateOrderBy(sb, o, firstOrderBy);
++    	}
++	        
++    }
+ 
+ }

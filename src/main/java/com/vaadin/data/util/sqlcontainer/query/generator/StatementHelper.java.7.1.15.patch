@@ -1,0 +1,24 @@
+--- StatementHelper.java.orig	2014-05-28 16:44:14.361262003 -0500
++++ StatementHelper.java	2014-05-29 13:40:01.948519376 -0500
+@@ -40,9 +40,9 @@
+ public class StatementHelper implements Serializable {
+ 
+     private String queryString;
+ 
+-    private List<Object> parameters = new ArrayList<Object>();
++    protected List<Object> parameters = new ArrayList<Object>();
+     private Map<Integer, Class<?>> dataTypes = new HashMap<Integer, Class<?>>();
+ 
+     public StatementHelper() {
+     }
+@@ -116,9 +116,9 @@
+          * setBlob(int parameterIndex, Blob x)
+          */
+     }
+ 
+-    private void handleNullValue(int i, PreparedStatement pstmt)
++    protected void handleNullValue(int i, PreparedStatement pstmt)
+             throws SQLException {
+         if (BigDecimal.class.equals(dataTypes.get(i))) {
+             pstmt.setBigDecimal(i + 1, null);
+         } else if (Boolean.class.equals(dataTypes.get(i))) {

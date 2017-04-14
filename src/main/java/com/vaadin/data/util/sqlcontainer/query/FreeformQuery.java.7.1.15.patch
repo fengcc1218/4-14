@@ -1,0 +1,72 @@
+--- FreeformQuery.orig	2014-05-29 13:20:49.006375329 -0500
++++ FreeformQuery.java	2014-05-29 13:27:18.487139383 -0500
+@@ -26,9 +26,9 @@
+ import java.util.Collections;
+ import java.util.List;
+ 
+ import com.vaadin.data.Container.Filter;
+-import com.vaadin.data.util.sqlcontainer.RowItem;
++import com.vaadin.data.Item;
+ import com.vaadin.data.util.sqlcontainer.SQLContainer;
+ import com.vaadin.data.util.sqlcontainer.connection.JDBCConnectionPool;
+ import com.vaadin.data.util.sqlcontainer.query.generator.StatementHelper;
+ import com.vaadin.data.util.sqlcontainer.query.generator.filter.QueryBuilder;
+@@ -37,10 +37,10 @@
+ public class FreeformQuery extends AbstractTransactionalQuery implements
+         QueryDelegate {
+ 
+     FreeformQueryDelegate delegate = null;
+-    private String queryString;
+-    private List<String> primaryKeyColumns;
++    protected String queryString;
++    protected List<String> primaryKeyColumns;
+ 
+     /**
+      * Prevent no-parameters instantiation of FreeformQuery
+      */
+@@ -103,8 +103,15 @@
+         this(queryString, Arrays.asList(primaryKeyColumns), connectionPool);
+     }
+ 
+     /**
++     * Construction for use in extended classes.
++     */
++    protected FreeformQuery(JDBCConnectionPool connectionPool) {
++    	super(connectionPool);
++    }
++
++    /**
+      * This implementation of getCount() actually fetches all records from the
+      * database, which might be a performance issue. Override this method with a
+      * SELECT COUNT(*) ... query if this is too slow for your needs.
+      * 
+@@ -307,12 +314,12 @@
+      * (non-Javadoc)
+      * 
+      * @see
+      * com.vaadin.data.util.sqlcontainer.query.QueryDelegate#storeRow(com.vaadin
+-     * .data.util.sqlcontainer.RowItem)
++     * .data.Item)
+      */
+     @Override
+-    public int storeRow(RowItem row) throws SQLException {
++    public int storeRow(Item row) throws SQLException {
+         if (!isInTransaction()) {
+             throw new IllegalStateException("No transaction is active!");
+         } else if (primaryKeyColumns.isEmpty()) {
+             throw new UnsupportedOperationException(
+@@ -330,12 +337,12 @@
+      * (non-Javadoc)
+      * 
+      * @see
+      * com.vaadin.data.util.sqlcontainer.query.QueryDelegate#removeRow(com.vaadin
+-     * .data.util.sqlcontainer.RowItem)
++     * .data.Item)
+      */
+     @Override
+-    public boolean removeRow(RowItem row) throws SQLException {
++    public boolean removeRow(Item row) throws SQLException {
+         if (!isInTransaction()) {
+             throw new IllegalStateException("No transaction is active!");
+         } else if (primaryKeyColumns.isEmpty()) {
+             throw new UnsupportedOperationException(

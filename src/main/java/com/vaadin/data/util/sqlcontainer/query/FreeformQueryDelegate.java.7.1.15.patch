@@ -1,0 +1,23 @@
+--- FreeformQueryDelegate.orig	2014-05-29 12:57:57.143349198 -0500
++++ FreeformQueryDelegate.java	2014-05-29 13:00:00.033618347 -0500
+@@ -22,5 +22,5 @@
+ 
+ import com.vaadin.data.Container.Filter;
+-import com.vaadin.data.util.sqlcontainer.RowItem;
++import com.vaadin.data.Item;
+ 
+ public interface FreeformQueryDelegate extends Serializable {
+@@ -94,5 +94,5 @@
+      * @throws SQLException
+      */
+-    public int storeRow(Connection conn, RowItem row)
++    public int storeRow(Connection conn, Item row)
+             throws UnsupportedOperationException, SQLException;
+ 
+@@ -108,5 +108,5 @@
+      * @throws SQLException
+      */
+-    public boolean removeRow(Connection conn, RowItem row)
++    public boolean removeRow(Connection conn, Item row)
+             throws UnsupportedOperationException, SQLException;
+ 

@@ -1,0 +1,14 @@
+--- QueryBuilder.java.orig	2014-05-28 16:44:13.731260539 -0500
++++ QueryBuilder.java	2014-05-29 13:46:49.269261367 -0500
+@@ -38,8 +38,11 @@
+         addFilterTranslator(new CompareTranslator());
+         addFilterTranslator(new NotTranslator());
+         addFilterTranslator(new IsNullTranslator());
+         addFilterTranslator(new SimpleStringTranslator());
++        addFilterTranslator(new InTranslator());
++        addFilterTranslator(new InSQLTranslator());
++        addFilterTranslator(new LowercaseTranslator());
+     }
+ 
+     public synchronized static void addFilterTranslator(
+             FilterTranslator translator) {
